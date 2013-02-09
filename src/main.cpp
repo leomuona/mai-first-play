@@ -2,7 +2,6 @@
 #include <GL/glfw.h> // handles window + keyboard
 #include <glm/glm.hpp> // for vec3
 
-#include <sys/time.h>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -40,9 +39,7 @@ int initWindow(int width, int height, const std::string &title)
 
 inline long getTimeInMillis()
 {
-    timeval t;
-    gettimeofday(&t, NULL);
-    return t.tv_usec;
+    return static_cast<long> (glfwGetTime() * 1000);
 }
 
 void mainLoop()
