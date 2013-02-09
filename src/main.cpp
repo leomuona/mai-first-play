@@ -2,9 +2,10 @@
 #include <GL/glfw.h> // handles window + keyboard
 #include <glm/glm.hpp> // for vec3
 
+#include <sys/time.h>
+#include <cstdio>
+#include <cstdlib>
 #include <string>
-#include <stdio.h>
-#include <stdlib.h>
 
 int initWindow(int width, int height, const std::string &title)
 {
@@ -27,7 +28,7 @@ int initWindow(int width, int height, const std::string &title)
 
     // init GLEW
     glewExperimental = true; // needed in core profile
-    if (glewInit != GLEW_OK) {
+    if (glewInit() != GLEW_OK) {
         fprintf(stderr, "Failed to initialize GLEW\n");
         return -1;
     }
@@ -37,12 +38,45 @@ int initWindow(int width, int height, const std::string &title)
     return 0;
 }
 
+inline long getTimeInMillis()
+{
+    timeval t;
+    gettimeofday(&t, NULL);
+    return t.tv_usec;
+}
+
+void mainLoop()
+{
+    glfwEnable(GLFW_STICKY_KEYS);
+    
+    long start, end;
+    start = getTimeInMillis();
+    end = getTimeInMillis();
+    bool running = true;
+    while (running) {
+        // limited to 60 fps 
+        if (end - start > 16) {
+            start = getTimeInMillis();
+
+            glfwSwapBuffers(); // swap buffers
+        
+            if (glfwGetKey(GLFW_KEY_ESC) == GLFW_PRESS ||
+                !glfwGetWindowParam(GLFW_OPENED)) {
+                running = false;
+            }
+        }
+        end = getTimeInMillis();
+    }
+}
+
 int main()
 {
     if (initWindow(1024, 768, "Mai First Play") != 0) {
         fprintf(stderr, "Error occurred, exiting main program\n");
         return -1;
     }
+
+    mainLoop();
 
     return 0;
 }
