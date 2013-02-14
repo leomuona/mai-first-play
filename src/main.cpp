@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 #include <GL/glfw.h> // handles window + keyboard
 #include <glm/glm.hpp> // for vec3
+#include <glm/gtc/matrix_transform.hpp> // matrix fun
 
 #include <cstdio>
 #include <cstdlib>
@@ -58,12 +59,32 @@ void drawTriangle(GLuint &vertexbuffer)
     glDisableVertexAttribArray(0);
 }
 
+glm::mat4 moveCamera(int x, int y, int z)
+{
+    // Projection matrix
+    // 45 degree field of view, 4:3 aspect ratio, 0.1 - 100.0 display range
+    glm::mat4 projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
+    // camera matrix
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(x,y,z), // camera position
+        glm::vec3(0,0,0), // look at origo
+        glm::vec3(0,1,0) // up-vector
+    );
+    // model matrix: an identity matrix (model will be at origo)
+    glm::mat4 model = glm::mat4(1.0f); // changes for each model
+    // our model view projection : multiplication of 3 matrices
+    // does model -> view -> projection
+    glm::mat4 mvp = projection * view * model; 
+    return mvp;    
+}
+
 inline long getTimeInMillis()
 {
     return static_cast<long> (glfwGetTime() * 1000);
 }
 
-void mainLoop(GLuint &vertexbuffer, GLuint &glslProgramID)
+void mainLoop(GLuint &vertexbuffer, GLuint &glslProgramID,
+        GLuint &matrixID, glm::mat4 &mvp)
 {
     long start, end;
     start = getTimeInMillis();
@@ -75,10 +96,16 @@ void mainLoop(GLuint &vertexbuffer, GLuint &glslProgramID)
             start = getTimeInMillis();
             
             // clear the screen
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glClear(GL_COLOR_BUFFER_BIT);
 
             // use our shaders
             glUseProgram(glslProgramID);
+
+            // send our transofrmation to currently bound shader,
+            // in the "MVP" uniform
+            // for each model that is rendered, since the MVP will be different
+            // (atleast model part)
+            glUniformMatrix4fv(matrixID, 1, GL_FALSE, &mvp[0][0]); 
 
             drawTriangle(vertexbuffer);
 
@@ -115,7 +142,14 @@ int main()
     GLuint glslProgramID = shader::LoadShaders(
             "shaders/simple.vert.glsl",
             "shaders/simple.frag.glsl");
-
+ 
+    // get a handle for our "MVP" uniform
+    // only at initialisation time.
+    GLuint matrixID = glGetUniformLocation(glslProgramID, "MVP"); 
+    
+    // move camera
+    glm::mat4 mvp = moveCamera(4,3,3);
+     
     // define 3 vectors to represent 3 vertices
     static const GLfloat g_vertex_buffer_data[] = {
         -1.0f, -1.0f, 0.0f,
@@ -129,10 +163,9 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data),
             g_vertex_buffer_data, GL_STATIC_DRAW);
-     
-
+    
     // do the main loop
-    mainLoop(vertexbuffer, glslProgramID);
+    mainLoop(vertexbuffer, glslProgramID, matrixID, mvp);
 
     glfwTerminate();
 
